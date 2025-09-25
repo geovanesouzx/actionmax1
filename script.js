@@ -7,6 +7,16 @@ import {
     signInWithEmailAndPassword,
     signOut
 } from "https://www.gstatic.com/firebasejs/9.15.0/firebase-auth.js";
+import { 
+    getFirestore, 
+    doc, 
+    setDoc, 
+    getDoc,
+    collection,
+    getDocs,
+    query,
+    where
+} from "https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js";
 
 // Configuração do Firebase
 const firebaseConfig = {
@@ -21,12 +31,10 @@ const firebaseConfig = {
 // Inicializa o Firebase
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- CONFIGURAÇÕES E ESTADO GLOBAL ---
-    const apiKey = ''; // Chave da API removida
-    const imageBaseUrl = 'https://image.tmdb.org/t/p/original';
-    const imagePosterBaseUrl = 'https://image.tmdb.org/t/p/w500';
     const placeholderVideoUrl = 'https://vods1.watchingvs.com/m/A%20Viagem%20de%20Chihiro_2003_tt0245429.mp4';
     
     const avatars = [
@@ -122,7 +130,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteProfileBtn = document.getElementById('delete-profile-btn');
 
 
-    // --- GERENCIAMENTO DE ESTADO E DADOS (localStorage) ---
+    // --- GERENCIAMENTO DE ESTADO E DADOS (Firestore) ---
+    const saveDataToFirestore = async () => {
+        if (!auth.currentUser) return;
+        const userId = auth.currentUser.uid;
+        try {
+            await setDoc(doc(db, "users", userId), APP_STATE);
+        } catch (e) {
+            console.error("Error saving data to Firestore: ", e);
+            showToast("Erro ao salvar seus dados.");
+        }
+    };
+
+    const loadDataFromFirestore = async () => {
+        if (!auth.currentUser) return;
+        const userId = auth.currentUser.uid;
+        const docRef = doc(db, "users", userId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            APP_STATE = docSnap.data();
+        } else {
+            // Se não houver dados, cria uma estrutura padrão
+            APP_STATE = { profiles: [], profileData: {} };
+            console.log("No such document! Creating initial state.");
+        }
+    };
+
     const createDefaultProfileData = () => ({
         myList: [],
         skipTime: 10,
@@ -131,20 +165,18 @@ document.addEventListener('DOMContentLoaded', () => {
         comments: {},
         likedComments: {}
     });
-
-    const loadState = () => {
-        const data = localStorage.getItem('actionMaxData');
-        APP_STATE = data ? JSON.parse(data) : { profiles: [], profileData: {} };
-    };
-
-    const saveState = () => {
-        localStorage.setItem('actionMaxData', JSON.stringify(APP_STATE));
-    };
     
     const loadProfileData = (profileId) => {
         currentProfileId = profileId;
         const profile = APP_STATE.profiles.find(p => p.id === profileId);
-        const data = APP_STATE.profileData[profileId] || createDefaultProfileData();
+        // Garante que profileData exista para o perfil
+        if (!APP_STATE.profileData) {
+            APP_STATE.profileData = {};
+        }
+        if (!APP_STATE.profileData[profileId]) {
+            APP_STATE.profileData[profileId] = createDefaultProfileData();
+        }
+        const data = APP_STATE.profileData[profileId];
         
         username = profile.name;
         profilePic = profile.avatar;
@@ -161,7 +193,7 @@ document.addEventListener('DOMContentLoaded', () => {
         APP_STATE.profileData[currentProfileId] = {
             myList, skipTime, playbackSpeeds, ratings, comments, likedComments
         };
-        saveState();
+        saveDataToFirestore();
     };
 
     // --- FUNÇÕES UTILITÁRIAS ---
@@ -174,27 +206,38 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     };
 
-    async function fetchTMDB(endpoint) { 
-        if (!apiKey) {
-            console.warn("Chave da API do TMDB não configurada.");
+    const fetchCollection = async (collectionName) => {
+        try {
+            const querySnapshot = await getDocs(collection(db, collectionName));
+            const data = [];
+            querySnapshot.forEach((doc) => {
+                data.push({ id: doc.id, ...doc.data() });
+            });
+            return data;
+        } catch (error) {
+            console.error(`Error fetching ${collectionName}: `, error);
+            showToast(`Erro ao carregar ${collectionName}.`);
+            return [];
+        }
+    };
+    
+    const fetchDocument = async (collectionName, docId) => {
+        try {
+            const docRef = doc(db, collectionName, docId);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                return { id: docSnap.id, ...docSnap.data() };
+            } else {
+                console.log("No such document!");
+                return null;
+            }
+        } catch (error) {
+            console.error(`Error fetching document ${docId} from ${collectionName}: `, error);
+            showToast("Erro ao carregar detalhes.");
             return null;
         }
-        try {
-            const url = `https://api.themoviedb.org/3/${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${apiKey}&language=pt-BR&append_to_response=release_dates,content_ratings,credits,videos,external_ids`;
-            const response = await fetch(url);
-            if (!response.ok) { 
-                console.error("Erro na API TMDB:", response.status); 
-                showToast("Erro ao carregar dados. Tente novamente.");
-                return null; 
-            }
-            return await response.json();
-        } catch (error) { 
-            console.error("Falha ao buscar dados do TMDB:", error); 
-            showToast("Erro de conexão. Verifique sua internet.");
-            return null; 
-        }
-    }
-    
+    };
+
     const formatTime = (timeInSeconds) => {
         if (isNaN(timeInSeconds) || timeInSeconds < 0) return '00:00';
         const hours = Math.floor(timeInSeconds / 3600);
@@ -211,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         profilesGrid.innerHTML = '';
         profilesGrid.classList.toggle('managing', isManagingProfiles);
     
-        APP_STATE.profiles.forEach(profile => {
+        (APP_STATE.profiles || []).forEach(profile => {
             const profileEl = document.createElement('div');
             profileEl.className = 'profile-card flex flex-col items-center gap-2 w-24 md:w-36';
             profileEl.dataset.profileId = profile.id;
@@ -227,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
             profilesGrid.appendChild(profileEl);
         });
 
-        if (APP_STATE.profiles.length < 4 && !isManagingProfiles) {
+        if (!APP_STATE.profiles || APP_STATE.profiles.length < 4 && !isManagingProfiles) {
             const addProfileEl = document.createElement('div');
             addProfileEl.className = 'profile-card add-profile flex flex-col items-center gap-2 w-24 md:w-36';
             addProfileEl.innerHTML = `
@@ -282,7 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const saveProfile = () => {
         const name = profileModalName.value.trim();
-        const avatar = document.querySelector('.avatar-option.selected').dataset.avatar;
+        const avatar = document.querySelector('#profile-modal-avatar-grid .avatar-option.selected').dataset.avatar;
         if (!name) {
             showToast("Por favor, insira um nome para o perfil.");
             return;
@@ -297,10 +340,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 name,
                 avatar
             };
+            if (!APP_STATE.profiles) APP_STATE.profiles = [];
             APP_STATE.profiles.push(newProfile);
+            if (!APP_STATE.profileData) APP_STATE.profileData = {};
             APP_STATE.profileData[newProfile.id] = createDefaultProfileData();
         }
-        saveState();
+        saveDataToFirestore();
         renderProfileSelectionScreen();
         closeProfileModal();
     };
@@ -314,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         APP_STATE.profiles = APP_STATE.profiles.filter(p => p.id !== editingProfile.id);
         delete APP_STATE.profileData[editingProfile.id];
-        saveState();
+        saveDataToFirestore();
         renderProfileSelectionScreen();
         closeProfileModal();
     };
@@ -349,8 +394,11 @@ document.addEventListener('DOMContentLoaded', () => {
            updateActiveNav(targetScreenId);
 
            if (!loadedGrids.has(targetId)) {
-               // Conteúdo removido - não popula mais os grids automaticamente
-               if (targetId === 'edit-profile-screen') renderEditProfileScreen();
+                if (targetId === 'movies-screen') populateGrid('movies-grid', 'movies', 'movie');
+                else if (targetId === 'series-screen') populateGrid('series-grid', 'series', 'tv');
+                else if (targetId === 'my-list-screen') populateMyListPage();
+                else if (targetId === 'edit-profile-screen') renderEditProfileScreen();
+                else if (targetId === 'genres-screen') populateGenresPage();
                if(targetId !== 'home-screen' && !targetId.startsWith('details')) loadedGrids.add(targetId);
            } else if (targetId === 'my-list-screen') {
                populateMyListPage();
@@ -382,65 +430,161 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LÓGICA DE CONTEÚDO (CAROUSELS, GRIDS, DETALHES) ---
     
     const renderPoster = (item) => { 
-        const posterPath = item.poster_path ? `${imagePosterBaseUrl}${item.poster_path}` : 'https://placehold.co/300x450/334155/ffffff?text=Sem+Imagem';
+        const posterPath = item.poster_path || 'https://placehold.co/300x450/334155/ffffff?text=Sem+Imagem';
         const title = item.title || item.name;
-        const type = item.media_type || (item.title ? 'movie' : 'tv');
+        const type = item.type; // 'movie' or 'tv' should be in the doc
         return `<div class="relative flex-shrink-0 w-40 overflow-hidden md:w-48 content-poster" data-id="${item.id}" data-type="${type}"><img src="${posterPath}" class="object-cover w-full h-auto rounded-md" loading="lazy" alt="${title}"></div>`;
     };
 
     const renderGridPoster = (item) => {
-         const posterPath = item.poster_path ? `${imagePosterBaseUrl}${item.poster_path}` : 'https://placehold.co/300x450/334155/ffffff?text=Sem+Imagem';
+        const posterPath = item.poster_path || 'https://placehold.co/300x450/334155/ffffff?text=Sem+Imagem';
         const title = item.title || item.name;
-        const type = item.media_type || (item.title ? 'movie' : 'tv');
+        const type = item.type;
         return `<div class="w-full overflow-hidden content-poster" data-id="${item.id}" data-type="${type}"><img src="${posterPath}" class="object-cover w-full h-auto rounded-md" loading="lazy" alt="${title}"></div>`;
     };
 
-    const createCarousel = async (containerSelector, title, endpoint) => {
-        // Função desativada para não carregar conteúdo
-    };
+    const createCarousel = async (containerSelector, title, collectionName) => {
+        const container = document.querySelector(containerSelector);
+        if (!container) return;
+        const data = await fetchCollection(collectionName);
+        if (!data || data.length === 0) return;
 
-    const populateHomePage = async () => {
-         const heroSection = document.getElementById('hero-section');
-         heroSection.style.backgroundImage = `url('https://placehold.co/1920x1080/000000/ffffff?text=ActionMax')`;
-         heroSection.innerHTML = `
-             <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
-             <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black to-transparent"></div>
-             <div class="relative z-10 w-full p-6 text-center md:px-12 md:text-left space-y-4 mb-32 md:mb-12">
-                 <h2 class="text-4xl font-black uppercase md:text-6xl max-w-3xl mx-auto md:mx-0">Bem-vindo ao ActionMax</h2>
-                 <p class="max-w-xl text-sm text-gray-200 line-clamp-3 mx-auto md:mx-0">Sua plataforma de streaming.</p>
-             </div>`;
-        const homeContainer = document.getElementById('home-carousels');
-        homeContainer.innerHTML = ''; // Limpa os carrosséis
+        const carouselId = `carousel-${title.replace(/\s+/g, '-').toLowerCase()}`;
+        const section = document.createElement('section');
+        section.innerHTML = `
+            <div class="flex justify-between items-center px-4 mb-3"><h3 class="text-xl font-bold">${title}</h3><div class="hidden md:flex items-center space-x-2"><button class="carousel-nav-btn" data-carousel="${carouselId}" data-direction="-1"><i data-lucide="chevron-left" class="w-6 h-6 pointer-events-none"></i></button><button class="carousel-nav-btn" data-carousel="${carouselId}" data-direction="1"><i data-lucide="chevron-right" class="w-6 h-6 pointer-events-none"></i></button></div></div>
+            <div id="${carouselId}" class="flex py-4 px-4 space-x-4 overflow-x-auto scrollbar-hide -mx-4 carousel-container">${data.map(renderPoster).join('')}</div>`;
+        container.appendChild(section);
         lucide.createIcons();
     };
 
-    const populateGrid = async (gridId, endpoint, itemType) => {
-        const grid = document.getElementById(gridId);
-        if (!grid) return;
-        grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Nenhum conteúdo para exibir.</p>`;
+    const populateHomePage = async () => {
+        const featured = await fetchCollection('featured');
+        const heroSection = document.getElementById('hero-section');
+
+        if (featured && featured.length > 0) {
+            const heroContent = featured[Math.floor(Math.random() * featured.length)];
+            heroSection.style.backgroundImage = `url('${heroContent.backdrop_path}')`;
+            
+            const certificationHTML = getCertificationHTML(heroContent.certification);
+            
+            heroSection.innerHTML = `
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent"></div>
+                <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-black to-transparent"></div>
+                <div class="relative z-10 w-full p-6 text-center md:px-12 md:text-left space-y-4 mb-32 md:mb-12">
+                    <h2 class="text-4xl font-black uppercase md:text-6xl max-w-3xl mx-auto md:mx-0">${heroContent.title}</h2>
+                    <div class="flex items-center justify-center md:justify-start space-x-4 text-sm text-gray-300"><span>${heroContent.year}</span>${certificationHTML}</div>
+                    <p class="max-w-xl text-sm text-gray-200 line-clamp-3 mx-auto md:mx-0">${heroContent.overview}</p>
+                    <div class="flex items-center justify-center md:justify-start space-x-3 pt-2">
+                        <button class="watch-button flex items-center justify-center w-full max-w-xs gap-2 px-6 py-3 font-bold text-black transition-transform duration-200 bg-white rounded-full md:w-auto hover:scale-105" data-id="${heroContent.id}" data-type="${heroContent.type}" data-title="${heroContent.title}"><i data-lucide="play" class="w-5 h-5"></i>Assistir</button>
+                        <button class="info-button flex items-center justify-center p-3 font-bold text-white transition-transform duration-200 bg-white/20 backdrop-blur-sm rounded-full hover:scale-105" data-id="${heroContent.id}" data-type="${heroContent.type}"><i data-lucide="info" class="w-5 h-5 pointer-events-none"></i></button>
+                    </div>
+                </div>`;
+        } else {
+             heroSection.innerHTML = `<div class="flex items-center justify-center h-full"><p>Nenhum destaque no momento.</p></div>`;
+        }
+
+        const homeContainer = document.getElementById('home-carousels');
+        homeContainer.innerHTML = ''; 
+        await Promise.all([ 
+            createCarousel('#home-carousels', 'Filmes Populares', 'movies'), 
+            createCarousel('#home-carousels', 'Séries Populares', 'series')
+        ]);
+        lucide.createIcons();
     };
 
-    const getCertification = async (id, type) => {
-       return ''; // Retorna string vazia pois não busca mais dados
+    const populateGrid = async (gridId, collectionName, itemType) => {
+        const grid = document.getElementById(gridId);
+        if (!grid) return;
+        grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Carregando...</p>`;
+        const data = await fetchCollection(collectionName);
+        if (!data || data.length === 0) { grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Não foi possível carregar o conteúdo.</p>`; return; }
+        
+        grid.innerHTML = data.map(item => renderGridPoster({...item, type: itemType })).join('');
+    };
+
+    const getCertificationHTML = (cert) => {
+        if (!cert) return '';
+        const certColors = { 'L': 'bg-green-600', '10': 'bg-blue-600', '12': 'bg-yellow-600', '14': 'bg-orange-600', '16': 'bg-red-600', '18': 'bg-black' };
+        const color = certColors[cert] || 'bg-gray-600';
+        return `<span class="font-bold text-white ${color} px-2 py-0.5 rounded text-xs w-8 h-8 flex items-center justify-center">${cert}</span>`;
     };
     
     const renderDetails = async (contentId, type) => {
         showScreen(`details/${type}/${contentId}`);
+        
         const detailsContentContainer = document.getElementById('details-content-container');
         const bgGradient = document.getElementById('details-bg-gradient');
+        detailsContentContainer.innerHTML = `<p class="text-xl text-center pt-48">Carregando...</p>`;
         bgGradient.style.backgroundImage = 'none';
+
+        const item = await fetchDocument(type === 'tv' ? 'series' : 'movies', contentId);
+        if (!item) { detailsContentContainer.innerHTML = `<p class="text-xl text-red-500 text-center pt-48">Falha ao carregar detalhes.</p>`; return; }
+        
+        bgGradient.style.backgroundImage = `url('${item.backdrop_path || ''}')`;
+
+        const posterPath = item.poster_path || 'https://placehold.co/300x450/334155/ffffff?text=Sem+Imagem';
+        const title = item.title || item.name;
+        const year = item.year || "N/A";
+        const duration = item.runtime ? `${Math.floor(item.runtime / 60)}h ${item.runtime % 60}min` : `${item.number_of_seasons} Temporada(s)`;
+        const genres = Array.isArray(item.genres) ? item.genres.join(', ') : '';
+        const inList = isInMyList(item.id, type);
+        const certification = getCertificationHTML(item.certification);
+        const trailerKey = item.trailer_key;
+
         detailsContentContainer.innerHTML = `
             <button id="details-back-btn" class="absolute top-6 left-6 z-20 p-2 bg-black/40 rounded-full text-white hover:bg-black/60 transition-colors">
                 <i data-lucide="arrow-left" class="w-6 h-6"></i>
             </button>
-            <p class="text-xl text-center pt-48">Conteúdo indisponível.</p>`;
+            <div class="flex flex-col md:flex-row gap-8 md:gap-12 w-full max-w-6xl mx-auto items-center text-center md:items-start md:text-left pt-24 md:pt-32 pb-12 px-6 md:px-8">
+                <div class="w-3/4 max-w-[280px] md:w-auto md:max-w-xs flex-shrink-0 mx-auto md:mx-0">
+                    <img src="${posterPath}" class="w-full h-auto rounded-lg shadow-2xl">
+                </div>
+                <div class="flex-1 flex flex-col space-y-4">
+                    <h2 class="text-4xl font-black uppercase md:text-5xl">${title}</h2>
+                    <div class="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-sm text-muted">
+                        <span>${year}</span><span>•</span>${certification}<span>•</span><span>${duration}</span>
+                    </div>
+                    <p id="synopsis-text" class="max-w-2xl text-sm line-clamp-3">${item.overview || "Sinopse não disponível."}</p>
+                    <div id="details-actions" class="flex items-center justify-center md:justify-start space-x-4"><button id="read-more-btn" class="text-purple-400 text-sm font-semibold hover:underline">Ler mais</button><button id="view-cast-btn" class="text-purple-400 text-sm font-semibold hover:underline" data-id="${item.id}" data-type="${type}">Ver Elenco</button></div>
+                    <div class="flex flex-wrap items-center justify-center md:justify-start gap-2 pt-1"><span class="font-semibold text-sm">Gêneros:</span><div class="text-sm text-muted">${genres}</div></div>
+                    <div class="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
+                        <button class="watch-button flex items-center justify-center gap-2 px-6 py-3 font-bold text-black transition-transform duration-200 bg-white rounded-full hover:scale-105" data-id="${item.id}" data-title="${title}" data-type="${type}"><i data-lucide="play" class="w-5 h-5"></i>Assistir</button>
+                        ${trailerKey ? `<button class="trailer-button flex items-center justify-center gap-2 px-6 py-3 font-bold transition-transform duration-200 bg-white/20 backdrop-blur-sm rounded-full hover:scale-105" data-trailer-key="${trailerKey}"><i data-lucide="youtube" class="w-5 h-5"></i>Ver Trailer</button>` : ''}
+                        <button class="my-list-button flex items-center justify-center p-3 font-bold transition-transform duration-200 bg-white/20 backdrop-blur-sm rounded-full hover:scale-105" data-id="${item.id}" data-type="${type}" title="${inList ? 'Remover da Minha Lista' : 'Adicionar à Minha Lista'}"><i data-lucide="${inList ? 'check' : 'plus'}" class="w-5 h-5"></i></button>
+                        ${type === 'movie' ? `<button class="download-button flex items-center justify-center p-3 font-bold transition-transform duration-200 bg-white/20 backdrop-blur-sm rounded-full hover:scale-105" title="Download" data-id="${item.id}" data-type="${type}"><i data-lucide="download" class="w-5 h-5"></i></button>` : ''}
+                    </div>
+                    <div id="rating-section" class="pt-4" data-id="${item.id}" data-type="${type}"></div>
+                </div>
+            </div>
+            <div class="px-4 md:px-12 pb-24 w-full max-w-6xl mx-auto">
+                <div id="cast-section" class="hidden mb-8"></div>
+                ${type === 'tv' ? `<div id="seasons-section" class="mb-8" data-id="${item.id}" data-title="${title}"></div>` : ''}
+                <div id="comments-section" data-id="${item.id}" data-type="${type}"></div>
+            </div>`;
+        
+        updateRatingSection(item.id, type);
+        renderComments(item.id, type);
+        if(type === 'tv') renderSeasons(item);
         lucide.createIcons();
     };
 
     const populateGenresPage = async () => {
         const grid = document.getElementById('genres-grid');
         if (!grid) return;
-        grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Gêneros indisponíveis no momento.</p>`;
+        const genres = await fetchCollection('genres');
+        if (!genres || genres.length === 0) {
+            grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Gêneros indisponíveis.</p>`;
+            return;
+        }
+        
+        grid.innerHTML = genres.map(genre => `
+            <div class="genre-card relative aspect-video rounded-lg flex items-center justify-center p-4 text-center font-bold cursor-pointer transition-transform hover:scale-105 overflow-hidden" data-genre-id="${genre.id}" data-genre-name="${genre.name}">
+                <div class="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-110" style="background-image: url('${genre.imageUrl}')"></div>
+                <div class="absolute inset-0 bg-black/60 group-hover:bg-black/40 transition-colors"></div>
+                <span class="relative z-10 text-xl">${genre.name}</span>
+            </div>
+        `).join('');
     };
 
     const renderGenreResults = async (genreId, genreName) => {
@@ -448,17 +592,98 @@ document.addEventListener('DOMContentLoaded', () => {
         history.pushState({ screen: `genres/${genreId}/${genreName}` }, '', `#genres/${genreId}/${encodeURIComponent(genreName)}`);
         document.getElementById('genre-results-title').textContent = genreName;
         const grid = document.getElementById('genre-results-grid');
-        grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Nenhum conteúdo para este gênero.</p>`;
+        grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Carregando...</p>`;
+
+        const moviesRef = collection(db, "movies");
+        const seriesRef = collection(db, "series");
+        
+        const qMovies = query(moviesRef, where("genre_ids", "array-contains", parseInt(genreId)));
+        const qSeries = query(seriesRef, where("genre_ids", "array-contains", parseInt(genreId)));
+
+        const [moviesSnapshot, seriesSnapshot] = await Promise.all([getDocs(qMovies), getDocs(qSeries)]);
+        
+        const results = [];
+        moviesSnapshot.forEach(doc => results.push({ id: doc.id, ...doc.data(), type: 'movie' }));
+        seriesSnapshot.forEach(doc => results.push({ id: doc.id, ...doc.data(), type: 'tv' }));
+
+        if(results.length > 0) {
+            grid.innerHTML = results.map(renderGridPoster).join('');
+        } else {
+            grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Nenhum item encontrado neste gênero.</p>`;
+        }
     };
 
     // --- LÓGICA DE SÉRIES (TEMPORADAS E EPISÓDIOS) ---
     
     const renderSeasons = async (seriesData) => {
-        // Função desativada
+        currentSeriesData = seriesData;
+        const container = document.getElementById('seasons-section');
+        if (!container) return;
+
+        // Fetch seasons from subcollection
+        const seasonsRef = collection(db, 'series', seriesData.id, 'seasons');
+        const seasonsSnapshot = await getDocs(seasonsRef);
+        const seasons = [];
+        seasonsSnapshot.forEach(doc => seasons.push({ id: doc.id, ...doc.data() }));
+
+        if (!seasons || seasons.length === 0) return;
+        
+        // Sort seasons by season_number
+        seasons.sort((a, b) => a.season_number - b.season_number);
+        
+        const seasonsHTML = `
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-semibold text-xl">Episódios</h3>
+                <button id="open-season-modal-btn" class="bg-surface hover:bg-surface-hover-color border border-border-color rounded-md px-4 py-2 flex items-center gap-2 transition-colors">
+                    <span id="current-season-display">Temporada ${seasons[0].season_number}</span>
+                    <i data-lucide="chevron-down" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="episodes-container" class="flex flex-col space-y-2"></div>`;
+        container.innerHTML = seasonsHTML;
+        lucide.createIcons();
+        
+        document.getElementById('open-season-modal-btn').addEventListener('click', () => openSeasonsModal(seriesData.id, seasons));
+        
+        renderEpisodes(seriesData.id, seasons[0].season_number);
     };
     
     const renderEpisodes = async (seriesId, seasonNumber) => {
-         // Função desativada
+        const container = document.getElementById('episodes-container');
+        if (!container) return;
+        container.innerHTML = `<p class="text-muted col-span-full">Carregando episódios...</p>`;
+        
+        const episodesRef = collection(db, 'series', seriesId, 'seasons', `season_${seasonNumber}`, 'episodes');
+        const episodesSnapshot = await getDocs(episodesRef);
+        const episodes = [];
+        episodesSnapshot.forEach(doc => episodes.push({ id: doc.id, ...doc.data() }));
+
+        if (!episodes || episodes.length === 0) {
+            container.innerHTML = `<p class="text-red-500 col-span-full">Não foi possível carregar os episódios.</p>`;
+            return;
+        }
+
+        // Sort episodes
+        episodes.sort((a,b) => a.episode_number - b.episode_number);
+        
+        container.innerHTML = episodes.map(ep => `
+            <div class="watch-episode-btn surface surface-hover rounded-lg flex items-center gap-4 p-3 transition-colors cursor-pointer" 
+                 data-series-id="${seriesId}" 
+                 data-season-number="${seasonNumber}" 
+                 data-episode-number="${ep.episode_number}"
+                 data-title="${currentSeriesData.name} - T${seasonNumber}E${ep.episode_number}">
+                <span class="text-xl font-bold text-muted w-8 text-center">${ep.episode_number}</span>
+                <img src="${ep.still_path || 'https://placehold.co/128x72/334155/ffffff?text=ActionMax'}" class="rounded w-32 h-auto object-cover aspect-video flex-shrink-0">
+                <div class="flex-1 overflow-hidden">
+                    <h4 class="font-bold text-sm truncate">${ep.name}</h4>
+                    <p class="text-xs text-muted line-clamp-2 mt-1">${ep.overview || 'Sem descrição.'}</p>
+                </div>
+                <div class="p-3">
+                    <i data-lucide="play" class="w-6 h-6 text-purple-400 pointer-events-none"></i>
+                </div>
+            </div>
+        `).join('');
+        lucide.createIcons();
     };
 
     // --- LÓGICA DO PLAYER DE VÍDEO ---
@@ -480,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
             youtubePlayer.classList.remove('hidden');
             playerControls.classList.add('hidden'); // Oculta controles para trailers
         } else if (src) {
-            video.src = src;
+            video.src = src; // Aqui viria a URL do vídeo do Firestore Storage
             video.classList.remove('hidden');
             playerControls.classList.remove('hidden'); // Mostra controles para filmes/séries
         } else {
@@ -558,7 +783,26 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     const navigateEpisode = async (direction) => {
-        // Função desativada, pois depende dos dados do TMDB
+        const { seriesId, seasonNumber, episodeNumber } = currentEpisodeInfo;
+        const newEpisodeNumber = episodeNumber + direction;
+
+        const episodeDocRef = doc(db, 'series', seriesId, 'seasons', `season_${seasonNumber}`, 'episodes', `episode_${newEpisodeNumber}`);
+        const episodeDocSnap = await getDoc(episodeDocRef);
+
+        if (!episodeDocSnap.exists()) {
+             showToast("Episódio não encontrado.");
+             return;
+        }
+        
+        const episodeData = episodeDocSnap.data();
+        
+        openPlayer({
+            src: episodeData.video_url || placeholderVideoUrl,
+            title: `${currentSeriesData.name} - T${seasonNumber}E${newEpisodeNumber}`,
+            type: 'video',
+            isSeries: true,
+            episodeInfo: { seriesId, seasonNumber, episodeNumber: newEpisodeNumber }
+        });
     };
 
     // --- LÓGICA DE INTERAÇÃO (LISTA, AVALIAÇÃO, COMENTÁRIOS, MODAIS) ---
@@ -584,8 +828,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const populateMyListPage = async () => {
          const grid = document.getElementById('my-list-grid');
         if (!grid) return;
-        if (myList.length === 0) { grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Sua lista está vazia.</p>`; return; }
-        grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Não foi possível carregar o conteúdo da lista.</p>`;
+        if (!myList || myList.length === 0) { grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Sua lista está vazia.</p>`; return; }
+        
+        grid.innerHTML = `<p class="text-gray-400 col-span-full text-center">Carregando sua lista...</p>`;
+        
+        const contentPromises = myList.map(item => fetchDocument(item.type === 'tv' ? 'series' : 'movies', item.id));
+        const contentItems = await Promise.all(contentPromises);
+        
+        grid.innerHTML = contentItems
+            .filter(Boolean)
+            .map(item => renderGridPoster({...item, type: myList.find(i => i.id == item.id).type }))
+            .join('');
     };
     
     const getRatingKey = (contentId, type) => `${contentId}_${type}`;
@@ -655,8 +908,27 @@ document.addEventListener('DOMContentLoaded', () => {
         lucide.createIcons();
     };
 
-    const openSeasonsModal = (seriesData) => {
-        seasonListContainer.innerHTML = '<p class="text-muted text-center col-span-full">Indisponível.</p>';
+    const openSeasonsModal = (seriesId, seasons) => {
+        seasonListContainer.innerHTML = '';
+        seasons.forEach(season => {
+            const seasonCard = document.createElement('div');
+            seasonCard.className = 'season-card-btn flex flex-col gap-2 cursor-pointer group';
+            seasonCard.dataset.seasonNumber = season.season_number;
+            seasonCard.dataset.seriesId = seriesId;
+            
+            const posterPath = season.poster_path || 'https://placehold.co/300x450/334155/ffffff?text=Sem+Poster';
+
+            seasonCard.innerHTML = `
+                <div class="relative overflow-hidden rounded-md">
+                    <img src="${posterPath}" class="aspect-[2/3] w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" alt="${season.name}">
+                    <div class="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors"></div>
+                </div>
+                <h4 class="font-semibold text-sm group-hover:text-purple-400 transition-colors">${season.name}</h4>
+                <p class="text-xs text-muted">${season.episode_count} episódios</p>
+            `;
+            seasonListContainer.appendChild(seasonCard);
+        });
+
         seasonModalOverlay.classList.remove('hidden');
         setTimeout(() => {
             seasonModalOverlay.classList.remove('opacity-0');
@@ -710,8 +982,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const initializeApp = () => {
-        loadState();
-        if (APP_STATE.profiles.length === 0) {
+        if (!APP_STATE.profiles || APP_STATE.profiles.length === 0) {
             openProfileModal();
         } else {
             renderProfileSelectionScreen();
@@ -725,9 +996,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500); // Wait for fade out animation
     }, 3000);
 
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // User is signed in, hide auth screen and start the app
+            // User is signed in, load their data, hide auth screen and start the app
+            await loadDataFromFirestore();
             authScreen.classList.add('hidden');
             initializeApp();
         } else {
@@ -844,7 +1116,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (readMoreBtn) { const synopsis = document.getElementById('synopsis-text'); synopsis.classList.toggle('line-clamp-3'); readMoreBtn.textContent = synopsis.classList.contains('line-clamp-3') ? 'Ler mais' : 'Ler menos'; }
         
         const viewCastBtn = event.target.closest('#view-cast-btn');
-        if(viewCastBtn) { renderCast(viewCastBtn.dataset.id, viewCastBtn.dataset.type); viewCastBtn.style.display = 'none'; }
+        if(viewCastBtn) { 
+             const item = await fetchDocument(viewCastBtn.dataset.type === 'tv' ? 'series' : 'movies', viewCastBtn.dataset.id);
+             renderCast(item);
+             viewCastBtn.style.display = 'none';
+        }
         const hideCastBtn = event.target.closest('#hide-cast-btn');
         if(hideCastBtn) { document.getElementById('cast-section').classList.add('hidden'); hideCastBtn.remove(); document.getElementById('view-cast-btn').style.display = 'inline'; }
         
@@ -861,23 +1137,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const watchButton = event.target.closest('.watch-button');
         if (watchButton) { 
             const { id, title, type } = watchButton.dataset;
-            openPlayer({ src: placeholderVideoUrl, title, type: 'video' });
+            const item = await fetchDocument(type === 'tv' ? 'series' : 'movies', id);
+            openPlayer({ src: item.video_url || placeholderVideoUrl, title, type: 'video' });
         }
 
         const watchEpisodeBtn = event.target.closest('.watch-episode-btn');
         if (watchEpisodeBtn) {
             const { seriesId, seasonNumber, episodeNumber, title } = watchEpisodeBtn.dataset;
-            openPlayer({
-                src: placeholderVideoUrl,
-                title: title,
-                type: 'video',
-                isSeries: true,
-                episodeInfo: {
-                    seriesId: parseInt(seriesId),
-                    seasonNumber: parseInt(seasonNumber),
-                    episodeNumber: parseInt(episodeNumber)
-                }
-            });
+            const episodeDoc = await getDoc(doc(db, 'series', seriesId, 'seasons', `season_${seasonNumber}`, 'episodes', `episode_${episodeNumber}`));
+            if(episodeDoc.exists()){
+                const episodeData = episodeDoc.data();
+                 openPlayer({
+                    src: episodeData.video_url || placeholderVideoUrl,
+                    title: title,
+                    type: 'video',
+                    isSeries: true,
+                    episodeInfo: {
+                        seriesId: seriesId,
+                        seasonNumber: parseInt(seasonNumber),
+                        episodeNumber: parseInt(episodeNumber)
+                    }
+                });
+            }
         }
 
         const trailerButton = event.target.closest('.trailer-button');
@@ -905,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 username = newUsername;
                 const profileIndex = APP_STATE.profiles.findIndex(p => p.id === currentProfileId);
                 APP_STATE.profiles[profileIndex].name = newUsername;
-                saveState();
+                saveDataToFirestore();
                 updateProfileInfo();
                 showToast('Nome de usuário atualizado!');
             }
@@ -916,7 +1197,7 @@ document.addEventListener('DOMContentLoaded', () => {
             profilePic = avatarImg.dataset.avatar;
             const profileIndex = APP_STATE.profiles.findIndex(p => p.id === currentProfileId);
             APP_STATE.profiles[profileIndex].avatar = profilePic;
-            saveState();
+            saveDataToFirestore();
             updateProfileInfo();
             
             document.querySelectorAll('#avatar-grid .avatar-option').forEach(el => el.classList.remove('selected'));
@@ -1132,11 +1413,23 @@ document.addEventListener('DOMContentLoaded', () => {
      document.getElementById('close-notifications-btn').addEventListener('click', closeNotifications);
      notificationsOverlay.addEventListener('click', (e) => { if (e.target === notificationsOverlay) closeNotifications(); });
 
-    const renderCast = async (contentId, type) => {
+    const renderCast = (item) => {
         const castSection = document.getElementById('cast-section');
         if(!castSection) return;
-        castSection.innerHTML = `<h3 class="font-semibold mb-4 text-xl">Elenco Principal</h3><p class="text-muted">Elenco não disponível.</p>`;
+        
+        if(!item || !item.cast || item.cast.length === 0) {
+            castSection.innerHTML = `<h3 class="font-semibold mb-4 text-xl">Elenco Principal</h3><p class="text-muted">Elenco não disponível.</p>`;
+        } else {
+            const cast = item.cast.slice(0, 10);
+            let castHTML = cast.map(member => `
+                <div class="text-center flex-shrink-0 w-24"><img src="${member.profile_path || 'https://placehold.co/200x300/334155/ffffff?text=?'}" class="w-20 h-20 mx-auto rounded-full object-cover mb-2"><p class="text-sm font-semibold">${member.name}</p><p class="text-xs text-muted">${member.character}</p></div>`).join('');
+            castSection.innerHTML = `<h3 class="font-semibold mb-4 text-xl">Elenco Principal</h3><div class="flex space-x-4 overflow-x-auto scrollbar-hide pb-4">${castHTML}</div>`;
+        }
         castSection.classList.remove('hidden');
+        const actionsContainer = document.getElementById('details-actions');
+        if(!document.getElementById('hide-cast-btn')) {
+            actionsContainer.insertAdjacentHTML('beforeend', `<button id="hide-cast-btn" class="text-purple-400 text-sm font-semibold hover:underline">Ocultar Elenco</button>`);
+        }
     };
     const updateSkipTimeButtons = () => {
          const rewindDisplay = document.getElementById('rewind-time-display');
