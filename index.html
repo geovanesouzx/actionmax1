@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ActionMax</title>
+    
+    <!-- FAVICON E ÍCONES ATUALIZADOS -->
+    <link rel="apple-touch-icon" sizes="57x57" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="60x60" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="72x72" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="76x76" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="114x114" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="120x120" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="144x144" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="152x152" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="https://files.catbox.moe/6g41cb.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://files.catbox.moe/6g41cb.png">
+    <meta name="msapplication-TileColor" content="#ffffff">
+    <meta name="msapplication-TileImage" content="https://files.catbox.moe/6g41cb.png">
+    <meta name="theme-color" content="#ffffff">
+
+    <!-- Scripts e Fontes -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Folha de Estilo -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="loading-screen" class="fixed inset-0 z-[200] bg-black flex flex-col items-center justify-center gap-6">
+        <h1 class="text-5xl font-extrabold tracking-wider"><span class="text-white">ACTION</span><span class="text-purple-500">MAX</span></h1>
+        <div class="spinner"></div>
+    </div>
+
+    <div id="auth-screen" class="fixed inset-0 z-[150] bg-cover bg-center hidden items-center justify-center p-4" style="background-image: url('https://images.unsplash.com/photo-1574267432553-4b4628081c31?q=80&w=1931&auto=format&fit=crop');">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative w-full max-w-md p-8 space-y-6 bg-black/50 rounded-2xl shadow-lg">
+            <!-- Login Form -->
+            <div id="login-form">
+                <h2 class="text-3xl font-bold text-center text-white">Entrar</h2>
+                <form class="mt-8 space-y-6">
+                    <div>
+                        <input id="login-email" name="email" type="email" autocomplete="email" required class="w-full p-3 text-white placeholder-gray-400 bg-gray-800/60 border-2 border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition" placeholder="Email">
+                    </div>
+                    <div>
+                        <input id="login-password" name="password" type="password" autocomplete="current-password" required class="w-full p-3 text-white placeholder-gray-400 bg-gray-800/60 border-2 border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition" placeholder="Senha">
+                    </div>
+                    <button type="submit" class="w-full p-3 font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors">Entrar</button>
+                </form>
+                <p class="mt-4 text-sm text-center text-gray-400">
+                    Não tem uma conta?
+                    <button id="show-signup-btn" class="font-semibold text-purple-400 hover:underline">Cadastre-se</button>
+                </p>
+            </div>
+            <!-- Signup Form (hidden by default) -->
+            <div id="signup-form" class="hidden">
+                <h2 class="text-3xl font-bold text-center text-white">Cadastrar</h2>
+                <form class="mt-8 space-y-6">
+                    <div>
+                        <input id="signup-email" name="email" type="email" autocomplete="email" required class="w-full p-3 text-white placeholder-gray-400 bg-gray-800/60 border-2 border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition" placeholder="Email">
+                    </div>
+                    <div>
+                        <input id="signup-password" name="password" type="password" autocomplete="new-password" required class="w-full p-3 text-white placeholder-gray-400 bg-gray-800/60 border-2 border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition" placeholder="Senha">
+                    </div>
+                     <div>
+                        <input id="signup-confirm-password" name="confirm-password" type="password" autocomplete="new-password" required class="w-full p-3 text-white placeholder-gray-400 bg-gray-800/60 border-2 border-gray-700 rounded-lg focus:outline-none focus:border-purple-500 transition" placeholder="Confirmar Senha">
+                    </div>
+                    <button type="submit" class="w-full p-3 font-semibold text-white bg-purple-600 rounded-lg hover:bg-purple-700 transition-colors">Cadastrar</button>
+                </form>
+                <p class="mt-4 text-sm text-center text-gray-400">
+                    Já tem uma conta?
+                    <button id="show-login-btn" class="font-semibold text-purple-400 hover:underline">Entrar</button>
+                </p>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="w-full min-h-screen">
+        <header class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 px-4 bg-gradient-to-b from-black/90 to-transparent md:px-8 transition-all duration-300 hidden" id="main-header">
+            <div class="flex items-center space-x-8">
+                <h1 class="text-2xl font-extrabold tracking-wider cursor-pointer" data-target="home-screen"><span class="text-white">ACTION</span><span class="text-purple-500">MAX</span></h1>
+                <nav class="hidden md:flex items-center space-x-8">
+                    <a href="#" class="relative text-base font-semibold text-gray-400 transition-colors hover:text-white nav-link" data-target="home-screen">Início</a>
+                    <a href="#" class="relative text-base font-semibold text-gray-400 transition-colors hover:text-white nav-link" data-target="series-screen">Séries</a>
+                    <a href="#" class="relative text-base font-semibold text-gray-400 transition-colors hover:text-white nav-link" data-target="movies-screen">Filmes</a>
+                    <a href="#" class="relative text-base font-semibold text-gray-400 transition-colors hover:text-white nav-link" data-target="genres-screen">Gêneros</a>
+                    <a href="#" class="relative text-base font-semibold text-gray-400 transition-colors hover:text-white nav-link" data-target="requests-screen">Pedidos</a>
+                </nav>
+            </div>
+            <div class="flex items-center space-x-4 md:space-x-6">
+                <i data-lucide="search" class="w-6 h-6 text-gray-300 cursor-pointer nav-icon hover:text-white transition-colors" data-target="search-screen"></i>
+                <i id="notifications-bell-icon" data-lucide="bell" class="w-6 h-6 text-gray-300 cursor-pointer hover:text-white transition-colors"></i>
+                <img src="https://i.pravatar.cc/40" alt="Foto de Perfil" id="profile-icon" class="w-8 h-8 md:w-10 md:h-10 rounded-full cursor-pointer object-cover" data-target="profile-screen">
+            </div>
+        </header>
+
+        <!-- TELA DE SELEÇÃO DE PERFIL -->
+        <div id="profile-selection-screen" class="fixed inset-0 z-[100] bg-black flex-col items-center justify-center p-4 hidden">
+            <h2 class="text-3xl md:text-5xl font-bold mb-8">Quem está assistindo?</h2>
+            <div id="profiles-grid" class="flex flex-wrap items-start justify-center gap-4 md:gap-8">
+                <!-- Perfis serão injetados aqui via JS -->
+            </div>
+            <button id="manage-profiles-btn" class="mt-12 px-6 py-2 border border-gray-600 text-gray-400 hover:border-white hover:text-white transition-colors rounded-md text-lg">Gerenciar Perfis</button>
+        </div>
+
+        <div id="notifications-overlay" class="fixed inset-0 z-[60] bg-black/60 transition-opacity duration-300 ease-in-out opacity-0 hidden">
+            <div id="notifications-panel" class="fixed top-0 right-0 h-full w-full max-w-sm bg-[#18181B]/80 backdrop-blur-lg shadow-lg transform translate-x-full transition-transform duration-300 ease-in-out p-6 flex flex-col surface">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold">Notificações</h2>
+                    <button id="close-notifications-btn" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-7 h-7"></i></button>
+                </div>
+                <div class="flex-grow space-y-4">
+                    <div class="p-4 rounded-lg bg-black/20"><h3 class="font-bold mb-1">DAN DA DAN</h3><p class="text-sm text-muted">O último episódio foi adicionado.</p></div>
+                    <div class="p-4 rounded-lg bg-black/20"><h3 class="font-bold mb-1">Dúvidas ou bugs?</h3><p class="text-sm text-muted">Encontrou algum problema? <a href="#" class="text-purple-400 underline">Clique para relatar</a>.</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="screen-container">
+            <main id="home-screen" class="hidden screen-content overflow-x-hidden">
+                <!-- Seção de destaque em tela cheia -->
+                <section id="hero-section" class="relative w-full h-screen bg-cover bg-center flex items-end"></section>
+                <div id="home-carousels" class="py-6 space-y-10 md:px-8 pb-24"></div>
+            </main>
+            
+            <section id="details-screen" class="hidden screen-content relative">
+                <div id="details-bg-gradient" class="fixed top-0 left-0 w-full h-full z-[-1] bg-cover bg-center"></div>
+                <div class="fixed top-0 left-0 w-full h-full z-[-1] bg-black/70 backdrop-blur-xl"></div>
+                <div id="details-content-container" class="relative z-10 w-full min-h-screen"></div>
+            </section>
+            
+            <section id="movies-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8"><h2 class="mb-8 text-3xl font-bold">Filmes</h2><div id="movies-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"></div></section>
+            <section id="series-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8"><h2 class="mb-8 text-3xl font-bold">Séries</h2><div id="series-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"></div></section>
+            <section id="my-list-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8"><h2 class="mb-8 text-3xl font-bold">Minha Lista</h2><div id="my-list-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"></div></section>
+            <section id="genres-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8">
+                <h2 class="mb-8 text-3xl font-bold">Gêneros</h2>
+                <div id="genres-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5"></div>
+            </section>
+            <section id="genre-results-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8">
+                 <button class="flex items-center gap-2 mb-8 text-muted hover:text-white transition-colors" data-target="genres-screen">
+                      <i data-lucide="arrow-left"></i> Voltar para Gêneros
+                 </button>
+                <h2 id="genre-results-title" class="mb-8 text-3xl font-bold"></h2>
+                <div id="genre-results-grid" class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"></div>
+            </section>
+            <section id="requests-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8 flex justify-center items-center"><h2 class="text-3xl font-bold text-gray-500">Tela de Pedidos</h2></section>
+            <section id="search-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8"><div class="max-w-2xl mx-auto"><h2 class="mb-8 text-3xl font-bold text-center">Busque por Filmes e Séries</h2><div class="relative"><input type="text" id="search-input" placeholder="O que você quer assistir?" class="w-full p-4 text-white placeholder-gray-400 bg-gray-800 border-2 border-transparent rounded-full focus:outline-none focus:border-purple-500"><i data-lucide="search" class="absolute w-6 h-6 text-gray-400 top-1/2 right-5 -translate-y-1/2"></i></div><div id="search-results" class="grid grid-cols-2 gap-4 mt-8 sm:grid-cols-3 md:grid-cols-4"></div></div></section>
+            <section id="profile-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8 flex flex-col justify-center items-center"><div class="flex flex-col items-center w-full max-w-lg text-center p-8 bg-gray-900/50 rounded-lg backdrop-blur-md surface"><img id="profile-screen-pic" src="https://i.pravatar.cc/120" alt="Foto de Perfil" class="w-32 h-32 mb-4 rounded-full border-4 border-purple-500 object-cover"><h2 id="profile-screen-name" class="mb-2 text-4xl font-bold">Alex</h2><button id="switch-profile-btn" class="text-sm text-purple-400 hover:underline mb-8">Trocar de Perfil</button><div class="w-full space-y-3"><a href="#" class="profile-link flex items-center w-full gap-4 p-4 font-semibold text-left transition-colors surface-hover rounded-lg" data-target="my-list-screen"><i data-lucide="list" class="w-5 h-5 text-purple-400"></i>Minha Lista</a><a href="#" class="profile-link flex items-center w-full gap-4 p-4 font-semibold text-left transition-colors surface-hover rounded-lg" data-target="account-settings-screen"><i data-lucide="settings" class="w-5 h-5 text-purple-400"></i>Configurações da Conta</a><a href="#" class="profile-link flex items-center w-full gap-4 p-4 font-semibold text-left transition-colors surface-hover rounded-lg"><i data-lucide="help-circle" class="w-5 h-5 text-purple-400"></i>Ajuda</a><a href="#" id="logout-btn" class="profile-link flex items-center w-full gap-4 p-4 font-semibold text-left text-red-500 transition-colors surface-hover rounded-lg mt-6"><i data-lucide="log-out" class="w-5 h-5"></i>Sair</a></div></div></section>
+            <section id="account-settings-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8 flex flex-col items-center"><div class="w-full max-w-2xl"><h2 class="mb-8 text-3xl font-bold">Configurações da Conta</h2><div class="space-y-4"><a href="#" class="flex items-center w-full gap-4 p-4 font-semibold text-left transition-colors surface-hover surface rounded-lg" data-target="edit-profile-screen"><i data-lucide="user" class="w-5 h-5 text-purple-400"></i>Editar Perfil Atual</a><button id="change-skip-time-btn" class="flex items-center w-full gap-4 p-4 font-semibold text-left transition-colors surface-hover surface rounded-lg"><i data-lucide="fast-forward" class="w-5 h-5 text-purple-400"></i>Alterar Tempo de Pulo</button><button id="manage-speed-btn" class="flex items-center w-full gap-4 p-4 font-semibold text-left transition-colors surface-hover surface rounded-lg"><i data-lucide="gauge-circle" class="w-5 h-5 text-purple-400"></i>Personalizar Velocidade</button></div></div></section>
+
+            <!-- TELA: Editar Perfil (agora para o perfil atual) -->
+            <section id="edit-profile-screen" class="hidden screen-content min-h-screen p-4 pt-24 pb-24 md:px-12 md:pb-8 flex flex-col items-center">
+                <div class="w-full max-w-4xl">
+                    <button class="flex items-center gap-2 mb-8 text-muted hover:text-white transition-colors" data-target="account-settings-screen">
+                        <i data-lucide="arrow-left"></i> Voltar
+                    </button>
+                    <h2 class="mb-8 text-3xl font-bold text-center">Editar Perfil Atual</h2>
+                    
+                    <div class="surface p-8 rounded-lg">
+                        <h3 class="font-bold text-xl mb-4">Nome de Usuário</h3>
+                        <div class="flex items-center gap-4">
+                            <input type="text" id="username-input" class="w-full p-3 text-color placeholder-text-muted bg-black/20 border-2 border-transparent rounded-lg focus:outline-none focus:border-purple-500">
+                            <button id="save-username-btn" class="p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors">Salvar</button>
+                        </div>
+                    </div>
+
+                    <div class="surface p-8 rounded-lg mt-8">
+                        <h3 class="font-bold text-xl mb-4">Escolha seu Avatar</h3>
+                        <div id="avatar-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
+                            <!-- Avatares serão inseridos aqui via JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <footer class="fixed bottom-0 left-0 right-0 z-50 p-2 bg-black/80 backdrop-blur-lg border-t border-[var(--border-color)] md:hidden hidden">
+            <nav class="flex items-center justify-around w-full">
+                <a href="#" class="relative flex flex-col items-center text-gray-400 nav-link-mobile flex-1 py-1" data-target="home-screen"><i data-lucide="home" class="w-6 h-6"></i><span class="mt-1 text-xs">Início</span></a>
+                <a href="#" class="relative flex flex-col items-center text-gray-400 nav-link-mobile flex-1 py-1" data-target="series-screen"><i data-lucide="tv" class="w-6 h-6"></i><span class="mt-1 text-xs">Séries</span></a>
+                <a href="#" class="relative flex flex-col items-center text-gray-400 nav-link-mobile flex-1 py-1" data-target="movies-screen"><i data-lucide="film" class="w-6 h-6"></i><span class="mt-1 text-xs">Filmes</span></a>
+                <a href="#" class="relative flex flex-col items-center text-gray-400 nav-link-mobile flex-1 py-1" data-target="genres-screen"><i data-lucide="layout-grid" class="w-6 h-6"></i><span class="mt-1 text-xs">Gêneros</span></a>
+                <a href="#" class="relative flex flex-col items-center text-gray-400 nav-link-mobile flex-1 py-1" data-target="requests-screen"><i data-lucide="archive" class="w-6 h-6"></i><span class="mt-1 text-xs">Pedidos</span></a>
+            </nav>
+        </footer>
+
+        <div id="video-player-modal" class="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+             <div id="video-player-container" class="w-full h-full relative group">
+                <video id="main-video" class="w-full h-full object-contain" autoplay></video>
+                <iframe id="youtube-player" class="w-full h-full hidden" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                <div id="video-unavailable-message" class="absolute inset-0 hidden items-center justify-center bg-black/50"><p class="text-2xl font-bold">Conteúdo indisponível</p></div>
+                <div class="player-overlay absolute inset-0 flex flex-col justify-between text-white bg-gradient-to-t from-black/70 via-transparent to-black/70 p-4">
+                    <div class="flex justify-between items-start">
+                        <h3 id="player-title" class="text-xl font-bold"></h3>
+                        <button id="close-player-btn" class="p-2 bg-black/30 rounded-full"><i data-lucide="arrow-left" class="w-6 h-6"></i></button>
+                    </div>
+                    <div id="video-player-controls" class="space-y-2">
+                        <div class="flex items-center gap-2"><span id="current-time-display">00:00</span><input id="video-player-timeline" type="range" min="0" max="100" value="0"><span id="duration-display">00:00</span></div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-4">
+                               <div class="flex items-center space-x-2">
+                                    <button id="volume-btn"><i data-lucide="volume-2" class="w-7 h-7"></i></button>
+                                    <input id="volume-slider" type="range" min="0" max="1" step="0.1" value="1" class="w-24 h-1 accent-purple-500">
+                               </div>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <button id="prev-episode-btn" class="hidden hover:bg-white/10 p-2 rounded-full"><i data-lucide="skip-back" class="w-7 h-7"></i></button>
+                                <button id="rewind-btn" class="relative w-12 h-12 flex items-center justify-center hover:bg-white/10 rounded-full">
+                                    <i data-lucide="rotate-ccw" class="w-9 h-9"></i>
+                                    <span id="rewind-time-display" class="absolute text-xs font-bold pointer-events-none"></span>
+                                </button>
+                                <button id="play-pause-btn" class="p-2 bg-white/20 rounded-full"><i data-lucide="play" class="w-8 h-8"></i></button>
+                                <button id="fast-forward-btn" class="relative w-12 h-12 flex items-center justify-center hover:bg-white/10 rounded-full">
+                                    <i data-lucide="rotate-cw" class="w-9 h-9"></i>
+                                    <span id="fast-forward-time-display" class="absolute text-xs font-bold pointer-events-none"></span>
+                                </button>
+                                <button id="next-episode-btn" class="hidden hover:bg-white/10 p-2 rounded-full"><i data-lucide="skip-forward" class="w-7 h-7"></i></button>
+                            </div>
+                            <div class="flex items-center space-x-4">
+                                <div class="relative"><button id="speed-btn" class="font-semibold text-lg w-12 h-12 flex items-center justify-center">1x</button><div id="speed-options" class="absolute bottom-full right-1/2 translate-x-1/2 mb-2 bg-black/80 rounded-lg p-2 hidden flex-col items-center space-y-1"></div></div>
+                                <button id="fullscreen-btn"><i data-lucide="maximize" class="w-7 h-7"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+             </div>
+        </div>
+        
+        <!-- MODAIS -->
+        <div id="profile-modal-overlay" class="custom-modal-overlay fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 hidden">
+            <div id="profile-modal" class="custom-modal p-8 rounded-lg shadow-lg w-full max-w-2xl transform scale-95 opacity-0 surface">
+                <h3 id="profile-modal-title" class="text-2xl font-bold mb-6 text-center"></h3>
+                <div class="flex flex-col md:flex-row items-center md:items-start gap-8">
+                    <div class="flex-shrink-0">
+                        <img id="profile-modal-avatar" src="" class="w-32 h-32 rounded-md object-cover">
+                    </div>
+                    <div class="flex-1 w-full">
+                        <label for="profile-modal-name" class="text-sm text-muted">Nome do Perfil</label>
+                        <input type="text" id="profile-modal-name" class="w-full mt-1 p-3 text-white placeholder-gray-400 bg-black/20 border-2 border-transparent rounded-lg focus:outline-none focus:border-purple-500" maxlength="20">
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <h4 class="font-bold text-lg mb-4">Escolha um avatar</h4>
+                    <div id="profile-modal-avatar-grid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-4 max-h-48 overflow-y-auto">
+                        <!-- Avatares vão aqui -->
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-4 mt-8">
+                    <button id="delete-profile-btn" class="mr-auto text-red-500 font-semibold hover:bg-red-500/10 px-4 py-2 rounded-md transition-colors hidden">Excluir Perfil</button>
+                    <button id="cancel-profile-btn" class="text-gray-400 font-semibold hover:bg-white/10 px-4 py-2 rounded-md transition-colors">Cancelar</button>
+                    <button id="save-profile-btn" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors">Salvar</button>
+                </div>
+            </div>
+        </div>
+        <div id="skip-time-modal-overlay" class="custom-modal-overlay fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 hidden">
+            <div id="skip-time-modal" class="custom-modal p-8 rounded-lg shadow-lg w-full max-w-sm transform scale-95 opacity-0 surface">
+                <h3 class="text-2xl font-bold mb-6 text-center">Alterar Tempo de Pulo</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <button data-skip="5" class="skip-option-btn p-4 surface-hover rounded-lg text-lg font-semibold transition-colors">5s</button>
+                    <button data-skip="10" class="skip-option-btn p-4 surface-hover rounded-lg text-lg font-semibold transition-colors">10s</button>
+                    <button data-skip="15" class="skip-option-btn p-4 surface-hover rounded-lg text-lg font-semibold transition-colors">15s</button>
+                    <button data-skip="30" class="skip-option-btn p-4 surface-hover rounded-lg text-lg font-semibold transition-colors">30s</button>
+                </div>
+                <div class="mt-6">
+                    <label for="custom-skip-input" class="text-sm text-muted">Ou defina um valor personalizado (em segundos):</label>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="number" id="custom-skip-input" class="w-full p-3 text-color placeholder-text-muted bg-black/20 border-2 border-transparent rounded-lg focus:outline-none focus:border-purple-500" placeholder="Ex: 20">
+                        <button id="save-custom-skip-btn" class="p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors">Salvar</button>
+                    </div>
+                </div>
+                <button id="close-skip-modal-btn" class="w-full mt-6 p-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition-colors">Cancelar</button>
+            </div>
+        </div>
+         <div id="speed-modal-overlay" class="custom-modal-overlay fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center opacity-0 hidden">
+            <div id="speed-modal" class="custom-modal p-8 rounded-lg shadow-lg w-full max-w-sm transform scale-95 opacity-0 surface">
+                <h3 class="text-2xl font-bold mb-6 text-center">Personalizar Velocidades</h3>
+                <div id="speed-list" class="space-y-2 mb-6 max-h-48 overflow-y-auto"></div>
+                <div class="mt-6">
+                    <label for="custom-speed-input" class="text-sm text-muted">Adicionar nova velocidade (ex: 1.75):</label>
+                    <div class="flex items-center gap-2 mt-2">
+                        <input type="number" step="0.25" min="0.25" max="4" id="custom-speed-input" class="w-full p-3 text-color placeholder-text-muted bg-black/20 border-2 border-transparent rounded-lg focus:outline-none focus:border-purple-500" placeholder="Ex: 1.75">
+                        <button id="save-custom-speed-btn" class="p-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition-colors">Adicionar</button>
+                    </div>
+                </div>
+                <button id="close-speed-modal-btn" class="w-full mt-6 p-3 bg-gray-700 hover:bg-gray-600 rounded-lg font-semibold transition-colors">Fechar</button>
+            </div>
+        </div>
+        
+        <div id="season-modal-overlay" class="custom-modal-overlay fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 opacity-0 hidden">
+            <div id="season-modal" class="custom-modal p-6 rounded-lg shadow-lg w-full max-w-2xl transform scale-95 opacity-0 surface flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                       <h3 class="text-2xl font-bold">Selecionar Temporada</h3>
+                       <button id="close-season-modal-btn" class="p-2 -mr-2 text-gray-400 hover:text-white"><i data-lucide="x" class="w-7 h-7"></i></button>
+                </div>
+                <div id="season-list-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 overflow-y-auto max-h-[70vh]">
+                    <!-- Temporadas serão populadas aqui pelo JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-notification"></div>
+
+    <script type="module" src="script.js"></script>
+</body>
+</html>
+
